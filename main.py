@@ -1,117 +1,273 @@
 import streamlit as st
 import pandas as pd
 
+
+st.set_page_config(page_title="Impacto da IA na Vida do Estudante", layout="wide")
+
+
+# =========================
+# Leitura e preparação dos dados
+# =========================
 df = pd.read_csv("AI_Student_Life_india.csv")
-
-st.write("""# Impacto da ia na vida do estudante""") # markdown
-
-st.write("### Com a evolução constante da IA, este recurso vem sendo cada vez mais usado no cenário estudantil, com isso, " \
-"torna-se cada vez mais necessário possuir mais informações em relação ao seu propósito, uso diário e o seu público ")
-st.write("## Questões éticas")
-st.write("### Questões éticas também serão analisadas neste estudo, tendo em vista que muitos estudantes se aproveitam do uso de IA para a realização de trabalhos" \
-"o que nem sempre é um problema, no entanto, a transparência em relação ao uso deve ser levada em consideração, devido ao fato de muitos estudantes utilizarem" \
-"de programas para tentar \"Humanizar\" seu trabalho impactando também no seu aprendizado em relação ao conteúdo")
+df_original = df.copy()
 
 
-atributos = ["Estudantes","Education_Level","City","AI_Tool_Used","Impact_on_Grades","Satisfaction_Level"]
-atributos_selecionados = st.multiselect("Escolha o atributo para visualizar",atributos)
-#Caso tenha selecionado Grau de educação
+# Verificações de qualidade dos dados
+valores_ausentes = df.isnull().sum()
+duplicatas_linhas = df.duplicated().sum()
+duplicatas_id = df["Student_ID"].duplicated().sum() if "Student_ID" in df.columns else 0
+
+
+# Tratamento de dados
+# Não há valores ausentes e não existem linhas totalmente duplicadas.
+# Mesmo assim, deixamos o tratamento documentado para cumprir o requisito do projeto.
+df = df.drop_duplicates()
+
+
+# =========================
+# Cabeçalho
+# =========================
+st.title("📊 Impacto da IA na Vida do Estudante")
+
+
+st.markdown(
+    """
+Com a evolução constante da Inteligência Artificial, seu uso no ambiente estudantil tem crescido significativamente.
+Este dashboard busca entender **como**, **por que** e **com que frequência** os estudantes utilizam essas ferramentas.
+"""
+)
+
+
+st.markdown("## ⚖️ Questões éticas")
+st.markdown(
+    """
+Embora a IA possa auxiliar no aprendizado, seu uso exige responsabilidade.
+Quando utilizada como apoio, ela pode melhorar a produtividade e ampliar o acesso à informação.
+Por outro lado, quando substitui o esforço do estudante, pode prejudicar o aprendizado e a autonomia acadêmica.
+"""
+)
+
+
+# =========================
+# Tratamento e qualidade dos dados
+# =========================
+st.markdown("## 🧹 Tratamento e qualidade dos dados")
+
+
+col1, col2, col3 = st.columns(3)
+col1.metric("Valores ausentes", int(valores_ausentes.sum()))
+col2.metric("Linhas totalmente duplicadas", int(duplicatas_linhas))
+col3.metric("IDs repetidos", int(duplicatas_id))
+
+
+st.write("### Verificação de valores ausentes por coluna")
+st.dataframe(valores_ausentes.reset_index().rename(columns={"index": "Coluna", 0: "Valores ausentes"}), use_container_width=True)
+
+
+if valores_ausentes.sum() == 0 and duplicatas_linhas == 0:
+    st.success(
+        "O conjunto de dados não apresentou valores ausentes nem linhas totalmente duplicadas. "
+        "Por isso, optamos por manter os registros e apenas documentar essa verificação no projeto."
+    )
+else:
+    st.warning(
+        "Foram encontrados problemas de qualidade nos dados. Neste caso, aplicamos remoção de duplicatas "
+        "e o tratamento necessário antes das análises."
+    )
+
+
+if duplicatas_id > 0:
+    st.info(
+        "Observação: o campo Student_ID possui repetições, então ele foi utilizado apenas como identificador técnico "
+        "e não como base principal para conclusões analíticas."
+    )
+
+
+# =========================
+# Filtro principal
+# =========================
+atributos = [
+    "Estudantes",
+    "Education_Level",
+    "City",
+    "AI_Tool_Used",
+    "Impact_on_Grades",
+    "Satisfaction_Level",
+]
+
+
+atributos_selecionados = st.multiselect(
+    "Escolha o atributo para visualizar:",
+    atributos,
+    default=["City"]
+)
+
+
+# =========================
+# Educação
+# =========================
 if "Education_Level" in atributos_selecionados:
-    
-    st.header("Niveis de educação")
-    
-        #Contador de estudantes
-    st.subheader("Quantidade de estudantes por grau")
+    st.header("🎓 Níveis de educação")
 
-    contador_Ensino = (df["Education_Level"].value_counts())
-    st.bar_chart(contador_Ensino)
 
-    nivel_comum = contador_Ensino.index[0]
-    
-    st.write(f"### O nível de escolaridade que mais utiliza ia é :green[{nivel_comum}] ")
-        #Estudantes usando IA
-    st.subheader("Média de estudantes que usam IA")
-    
-        #Variaveis para verificar média
-    media_Estudantes_IA = df.groupby("Education_Level")["Daily_Usage_Hours"].mean()
-    grupo_que_mais_usa = media_Estudantes_IA.idxmax()
-    
-    st.bar_chart(media_Estudantes_IA)
-    
-    st.write(f"O grupo que utiliza ia por mais tempo é :green[{grupo_que_mais_usa}], com uma média de {media_Estudantes_IA.max():.1f} horas")
-        #IA favorita de cada grupo
-    st.header("IA mais usada por cada grupo")
-    most_used_ai_by_education = df.groupby('Education_Level')['AI_Tool_Used'].value_counts().reset_index(name='Count')
-    most_used_ai_by_education = most_used_ai_by_education.loc[most_used_ai_by_education.groupby('Education_Level')['Count'].idxmax()]
-    st.bar_chart(most_used_ai_by_education,x="Education_Level",y="Count",color="AI_Tool_Used")
+    st.subheader("Quantidade de estudantes por nível educacional")
+    contador_ensino = df["Education_Level"].value_counts()
+    st.bar_chart(contador_ensino)
+    nivel_comum = contador_ensino.idxmax()
+    st.markdown(
+        f"O nível de escolaridade com maior presença no dataset é **{nivel_comum}**. "
+        f"Isso mostra que esse grupo representa a maior parcela dos estudantes analisados."
+    )
 
-#Caso tenha selecionado Ferramenta Utilizada
+
+    st.subheader("Média de horas diárias de uso de IA por nível")
+    media_estudantes_ia = df.groupby("Education_Level")["Daily_Usage_Hours"].mean().sort_values(ascending=False)
+    grupo_que_mais_usa = media_estudantes_ia.idxmax()
+    st.bar_chart(media_estudantes_ia)
+    st.markdown(
+        f"O grupo que utiliza IA por mais tempo é **{grupo_que_mais_usa}**, com média de **{media_estudantes_ia.max():.1f} horas por dia**. "
+        f"Isso sugere maior integração da IA à rotina acadêmica desse nível de ensino."
+    )
+
+
+    st.subheader("Ferramenta de IA mais usada em cada nível educacional")
+    most_used_ai_by_education = (
+        df.groupby("Education_Level")["AI_Tool_Used"]
+        .value_counts()
+        .reset_index(name="Count")
+    )
+    most_used_ai_by_education = most_used_ai_by_education.loc[
+        most_used_ai_by_education.groupby("Education_Level")["Count"].idxmax()
+    ]
+    st.bar_chart(most_used_ai_by_education, x="Education_Level", y="Count", color="AI_Tool_Used")
+
+
+# =========================
+# Ferramentas de IA
+# =========================
 if "AI_Tool_Used" in atributos_selecionados:
-        #IAs mais utilizadas em cada tópico
-        st.header("Ferramenta Utilizada")
-    
-    # Pergunta: Para que cada ferramenta é mais usada?
-        st.subheader("Distribuição de Propósito por Ferramenta")
-    
+    st.header("🤖 Ferramentas utilizadas")
 
-        analise_ferramenta = df.groupby(['AI_Tool_Used', 'Purpose']).size().reset_index(name='Quantidade')
-    
 
-        st.bar_chart(analise_ferramenta, x="AI_Tool_Used", y="Quantidade", color="Purpose")
+    st.subheader("Distribuição de propósito por ferramenta")
+    analise_ferramenta = df.groupby(["AI_Tool_Used", "Purpose"]).size().reset_index(name="Quantidade")
+    st.bar_chart(analise_ferramenta, x="AI_Tool_Used", y="Quantidade", color="Purpose")
 
-        #Ferramenta mais usada diariamente
-        st.subheader("Horas diarias de ferramenta")
-        horas_Diarias = df.groupby("AI_Tool_Used")["Daily_Usage_Hours"].sum()
-        horas_Diarias_nome = horas_Diarias.idxmax()
-        st.bar_chart(horas_Diarias)
-        st.write(f"### A IA mais utilizada é :green[{horas_Diarias_nome}] com ao todo :green[{horas_Diarias.max()}] horas diarias")
-#Caso tenha selecionado cidade
+
+    st.subheader("Total de horas diárias somadas por ferramenta")
+    horas_diarias = df.groupby("AI_Tool_Used")["Daily_Usage_Hours"].sum().sort_values(ascending=False)
+    horas_diarias_nome = horas_diarias.idxmax()
+    st.bar_chart(horas_diarias)
+    st.markdown(
+        f"A ferramenta com maior volume total de uso é **{horas_diarias_nome}**, somando **{horas_diarias.max():.1f} horas**. "
+        f"Isso reforça sua relevância entre os estudantes analisados."
+    )
+
+
+# =========================
+# Cidades
+# =========================
 if "City" in atributos_selecionados:
-      
-      st.header("Aspectos das cidades")
-        #Cidade que mais usa ia
-      st.subheader("Qual cidade usa mais IA?")
+    st.header("🌆 Aspectos das cidades")
 
-      contador_cidade = df.groupby("City")["AI_Tool_Used"].count()
-      st.bar_chart(contador_cidade)
-      st.write(f"A cidade que mais usa IA é :green[{contador_cidade.idxmax()}] com :green[{contador_cidade.max()}] usuarios registrados ")
 
-        #IA MAIS USADA EM CADA CIDADE
-      st.subheader("Qual a IA mais usada em cada cidade")
-      
-      ai_Cada_Cidade = df.groupby("City")["AI_Tool_Used"].value_counts().reset_index(name='Count')
-      ai_Cada_Cidade = ai_Cada_Cidade.loc[ai_Cada_Cidade.groupby("City")["Count"].idxmax()]
+    st.subheader("Qual cidade concentra mais usuários de IA?")
+    contador_cidade = df.groupby("City")["AI_Tool_Used"].count().sort_values(ascending=False)
+    st.bar_chart(contador_cidade)
+    st.markdown(
+        f"A cidade com maior número de estudantes utilizando IA é **{contador_cidade.idxmax()}**, com **{contador_cidade.max()} usuários registrados**. "
+        f"Isso pode indicar maior acesso à tecnologia ou maior adesão a ferramentas digitais nessa região."
+    )
 
-      st.bar_chart(data = ai_Cada_Cidade,x="City",y="Count",color="AI_Tool_Used")
 
-      #Qual cidade possui mais universitários
-      #Variaveis pra cada
-      Universitarios_Cidade = df[df.Education_Level == "University"].groupby("City")["Student_ID"].count()
-      Escola_Cidade = df[df.Education_Level == "School"].groupby("City")["Student_ID"].count()
-      Colegiais_Cidade = df[df.Education_Level == "College"].groupby("City")["Student_ID"].count()
-      Media_Cidade = df.groupby("City").size().mean()
+    st.subheader("Ferramenta de IA mais usada em cada cidade")
+    ai_cada_cidade = df.groupby("City")["AI_Tool_Used"].value_counts().reset_index(name="Count")
+    ai_cada_cidade = ai_cada_cidade.loc[ai_cada_cidade.groupby("City")["Count"].idxmax()]
+    st.bar_chart(ai_cada_cidade, x="City", y="Count", color="AI_Tool_Used")
 
-      st.write(f"A cidade que possui mais universitários é a :green[{Universitarios_Cidade.idxmax()}] com :green[{Universitarios_Cidade.max()} estudantes] ao todo")
-      st.write(f"A cidade que possui mais Colegiais é a :green[{Colegiais_Cidade.idxmax()}] com :green[{Colegiais_Cidade.max()} estudantes] ao todo")
-      st.write(f"A cidade que possui mais alunos de escola é a :green[{Escola_Cidade.idxmax()}] com :green[{Escola_Cidade.max()} estudantes] ao todo")
-      st.write(f"A média de estudantes que utilizam de IA por cidade é :green[{Media_Cidade:.0f}]")
+
+    universitarios_cidade = df[df["Education_Level"] == "University"].groupby("City")["Student_ID"].count()
+    escola_cidade = df[df["Education_Level"] == "School"].groupby("City")["Student_ID"].count()
+    colegiais_cidade = df[df["Education_Level"] == "College"].groupby("City")["Student_ID"].count()
+    media_cidade = df.groupby("City").size().mean()
+
+
+    st.markdown(
+        f"- A cidade com mais universitários é **{universitarios_cidade.idxmax()}**, com **{universitarios_cidade.max()} estudantes**.\n"
+        f"- A cidade com mais estudantes de nível College é **{colegiais_cidade.idxmax()}**, com **{colegiais_cidade.max()} estudantes**.\n"
+        f"- A cidade com mais alunos de School é **{escola_cidade.idxmax()}**, com **{escola_cidade.max()} estudantes**.\n"
+        f"- A média de estudantes que utilizam IA por cidade é de **{media_cidade:.0f}**."
+    )
+
+
+# =========================
+# Estudantes
+# =========================
 if "Estudantes" in atributos_selecionados:
-      st.header("Atributos dos estudantes")
-      #Genero que mais usa IA
-      st.subheader("Qual gênero mais utiliza da IA para estudos?")
-
-      contagem_genero = df['Gender'].value_counts()
-      st.bar_chart(contagem_genero)
-      st.write(f"O genero que mais utiliza IA é o :green[{contagem_genero.idxmax()}]")
-      #Idade que mais usa IA
-      st.subheader("Qual idade mais utiliza de IA?")
-
-      contagem_Idade = df['Age'].value_counts()
-
-      st.bar_chart(contagem_Idade)
-      st.write(f":green[{contagem_Idade.idxmax()}] anos é a idade que mais utiliza da IA para estudos")
+    st.header("👩‍🎓 Perfil dos estudantes")
 
 
-st.write("""
-# Obrigado         
-        """) # markdown
+    st.subheader("Qual gênero mais utiliza IA para estudos?")
+    contagem_genero = df["Gender"].value_counts()
+    st.bar_chart(contagem_genero)
+    st.markdown(
+        f"O gênero com maior presença entre os usuários analisados é **{contagem_genero.idxmax()}**."
+    )
+
+
+    st.subheader("Qual idade aparece com mais frequência entre os usuários?")
+    contagem_idade = df["Age"].value_counts().sort_index()
+    idade_mais_comum = df["Age"].mode().iloc[0]
+    st.bar_chart(contagem_idade)
+    st.markdown(
+        f"A idade que mais aparece entre os estudantes do dataset é **{idade_mais_comum} anos**."
+    )
+
+
+# =========================
+# Impacto nas notas
+# =========================
+if "Impact_on_Grades" in atributos_selecionados:
+    st.header("📈 Impacto da IA nas notas")
+
+
+    impacto_notas = df["Impact_on_Grades"].value_counts()
+    st.bar_chart(impacto_notas)
+    principal_impacto = impacto_notas.idxmax()
+    st.markdown(
+        f"O impacto mais frequente registrado foi **{principal_impacto}**. "
+        f"Isso sugere que o uso da IA pode estar associado a mudanças perceptíveis no desempenho acadêmico."
+    )
+
+
+# =========================
+# Satisfação
+# =========================
+if "Satisfaction_Level" in atributos_selecionados:
+    st.header("😊 Nível de satisfação dos estudantes")
+
+
+    satisfacao = df["Satisfaction_Level"].value_counts()
+    st.bar_chart(satisfacao)
+    satisfacao_mais_comum = satisfacao.idxmax()
+    st.markdown(
+        f"O nível de satisfação mais frequente é **{satisfacao_mais_comum}**. "
+        f"Isso ajuda a entender como os estudantes percebem a utilidade da IA em sua rotina."
+    )
+
+
+# =========================
+# Conclusão
+# =========================
+st.markdown("---")
+st.markdown(
+    """
+### ✅ Conclusão
+A Inteligência Artificial já faz parte da rotina dos estudantes e tende a crescer ainda mais.
+Os dados mostram padrões relevantes de uso, diferenças entre perfis e possíveis impactos acadêmicos.
+Além disso, a análise reforça a importância de um uso consciente, ético e equilibrado dessas ferramentas.
+
+
+### 🙌 Obrigado!
+"""
+)
