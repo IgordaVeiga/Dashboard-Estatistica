@@ -17,6 +17,10 @@ valores_ausentes = df.isnull().sum()
 duplicatas_linhas = df.duplicated().sum()
 duplicatas_id = df["Student_ID"].duplicated().sum() if "Student_ID" in df.columns else 0
 
+# Troca dos valores de id acima de 300 para os valores certos
+filtroID = df.index >= 300
+df.loc[filtroID, "Student_ID"] = df.loc[filtroID, "Student_ID"] + 300
+
 
 # Tratamento de dados
 # Não há valores ausentes e não existem linhas totalmente duplicadas.
